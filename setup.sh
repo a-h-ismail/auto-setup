@@ -84,12 +84,26 @@ if [ -n "$all_users_units" ]; then
     for i in $(seq $(echo "$all_users_units" | wc -l)); do
         username=$(echo "$all_users_units" | awk -F ':' "NR == $i {print \$1}")
         user_units=$(echo "$all_users_units" | awk -F ':' "NR == $i {print \$2}")
-        su - "$username" -c "systemctl --user enable --now $user_units"
+
+        for user_unit in $user_units; do
+            unit_target=$(grep 'WantedBy=' | cut -f 2 -d =)
+
+            # Default case
+            if [ -z "$unit_target" ]; then
+                unit_target='default.target'
+            fi
+
+            # Manually link units to their target since running systemctl --user from root is hard.
+            su - "$username" -c "mkdir -p \$HOME/.config/systemd/user/$unit_target.wants
+            ln -s \$HOME/.config/systemd/user/$user_unit \$HOME/.config/systemd/user/$unit_target.wants/$user_unit"
+        done
     done
+    echo 'Warning, you need to reload affected users systemd service managers for changes to take effect.'
 fi
 
 # Enable system units as requested
 # Reload the service manager since units could be newly installed by the package manager
+# Far easier than the users one
 if [ -n "$system_units" ]; then
     systemctl daemon-reload
     systemctl enable --now $system_units
