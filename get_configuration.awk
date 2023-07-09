@@ -1,5 +1,5 @@
 #!/usr/bin/awk
-match($0, section){
+index($0, section) {
     matched = 1
     next
 }
