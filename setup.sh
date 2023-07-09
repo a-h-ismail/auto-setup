@@ -5,9 +5,13 @@ if [ $EUID -ne 0 ]; then
 fi
 
 function get_section {
-    # Escaping the backslash twice (once for bash and once for awk)
-    # Reason: awk expects this: \[section\] (escape the [] for the regex)
-    awk -v "section=\\\\[$1\\\\]" -f extract_data.awk auto-setup.conf
+    awk -v "section=[$1]" -f get_configuration.awk auto-setup.conf
+}
+
+function exit_on_fail {
+    if [ $1 -ne 0 ]; then
+        exit 1
+    fi
 }
 
 system_type=$(get_section System)
@@ -21,6 +25,12 @@ pre_script=$(get_section Pre)
 post_script=$(get_section Post)
 post_package_install=$(get_section 'Post Packages')
 
+ping -c 4 8.8.8.8 &> /dev/null
+if [ $? -ne 0 ]; then
+    echo "Connect to the internet and try again."
+    exit 2
+fi
+
 # Execute the pre-install script
 if [ -n "$pre_script" ]; then
     $pre_script "$system_type"
@@ -31,21 +41,35 @@ if [ -n "$system_type" ]; then
     # Fedora and derivatives
     if [ "$system_type" == "rpm" ]; then
         dnf install $add_packages -y
-        dnf remove $remove_packages -y
+
+        if [ -n "$req_flatpacks" ]; then
+            dnf install flatpak
+        fi
+
+        dnf remove $remove_packages -y &&\
         dnf upgrade -y
+        exit_on_fail $?
     fi
     # Debian/Ubuntu derivatives
     if [ "$system_type" == "deb" ]; then
-        apt-get update
+        apt-get update &&\
         apt-get install $add_packages -y
-        apt-get remove --purge $remove_packages -y
-        apt-get autoremove -y
+        exit_on_fail $?
+
+        if [ -n "$req_flatpacks" ]; then
+            apt-get install flatpak -y
+        fi
+
+        apt-get remove --purge $remove_packages -y &&\
+        apt-get autoremove -y &&\
         apt-get upgrade -y
+        exit_on_fail $?
     fi
 fi
 
 # Install Flatpaks
 if [ -n "$req_flatpacks" ]; then
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     flatpak install $req_flatpacks -y
 fi
 
@@ -63,15 +87,31 @@ if [ -n "$files_mapping" ]; then
         source=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$1 }")
         destination=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$2 }")
 
-        mkdir -p "$destination"
-        cp -r "$source" "$destination"
-        # If an ACL file exists, restore the ACLs to the destination and delete the file
-        if [ -e "$source/acls.txt" ]; then
-            tmp=PWD
-            cd "$destination"
-            setfacl --restore=acls.txt
-            rm acls.txt
-            cd "$tmp"
+        # Case of source being a directory
+        if [ -d "$source" ]; then
+            mkdir -p "$destination"
+            cp -r "$source"/. "$destination"
+            # If an ACL file exists, restore the ACLs to the destination and delete the file
+            if [ -e "$source/acls.txt" ]; then
+                tmp=PWD
+                cd "$destination"
+                setfacl --restore=acls.txt
+                rm acls.txt
+                cd "$tmp"
+            fi
+        # Case of a file as source, the desired ACLs should be in the same directory as the file
+        elif [ -f "$source" ]; then
+            source_dir=$(dirname "$source")
+            if [ -e "$source_dir/acls.txt" ]; then
+                original_acl=$(getfacl "$source")
+                # Get the desired ACL and set it, then copy while preserving attributes.
+                awk -v "file=$source" -f isolate_acl.awk "$source_dir/acls.txt" | setfacl --set-file=- "$source"
+                cp -a "$source" "$destination"
+                # Restore the original ACL of the file
+                echo "$original_acl" | setfacl --set-file=- "$source"
+            else
+                cp "$source" "$destination"
+            fi
         fi
         # Restore SELinux labels
         restorecon -R "$destination" 2> /dev/null
@@ -86,16 +126,17 @@ if [ -n "$all_users_units" ]; then
         user_units=$(echo "$all_users_units" | awk -F ':' "NR == $i {print \$2}")
 
         for user_unit in $user_units; do
-            unit_target=$(grep 'WantedBy=' | cut -f 2 -d =)
+            unit_target=$(grep 'WantedBy=' "$user_unit" | cut -f 2 -d =)
 
             # Default case
             if [ -z "$unit_target" ]; then
                 unit_target='default.target'
             fi
 
-            # Manually link units to their target since running systemctl --user from root is hard.
-            su - "$username" -c "mkdir -p \$HOME/.config/systemd/user/$unit_target.wants
-            ln -s \$HOME/.config/systemd/user/$user_unit \$HOME/.config/systemd/user/$unit_target.wants/$user_unit"
+            # Manually link units to their target since running systemctl --user from root is relatively hard.
+            # machinectl is not always available on the host, neither systemd 248+
+            su - "$username" -c "mkdir -p \"\$HOME/.config/systemd/user/$unit_target.wants\"
+            ln -s \"\$HOME/.config/systemd/user/$user_unit\" \"\$HOME/.config/systemd/user/$unit_target.wants/$user_unit\""
         done
     done
     echo 'Warning, you need to reload affected users systemd service managers for changes to take effect.'
