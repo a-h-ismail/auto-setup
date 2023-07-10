@@ -87,9 +87,14 @@ if [ -n "$files_mapping" ]; then
         source=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$1 }")
         destination=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$2 }")
 
+        # Destination is expected to be a directory.
+        if [ -f "$destination" ]; then
+            destination=$(dirname "$destination")
+        fi
+        
+        mkdir -p "$destination"
         # Case of source being a directory
         if [ -d "$source" ]; then
-            mkdir -p "$destination"
             cp -r "$source"/. "$destination"
             # If an ACL file exists, restore the ACLs to the destination and delete the file
             if [ -e "$source/acls.txt" ]; then
