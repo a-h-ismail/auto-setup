@@ -45,4 +45,6 @@ cd auto-setup
 chmod +x *.sh
 ```
 
-After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup`. Make sure that the working directory is that of the script. It also expects root permissions so you should store it and associated scripts safely.
+After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup`.
+
+It expects root permissions so you should store it and associated scripts safely.
