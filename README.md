@@ -10,7 +10,7 @@ Linux Auto Setup is a set of scripts and a configuration file that helps you set
 - Supports Debian/Ubuntu and Fedora systems.
 - Install/Remove packages using `apt` or `dnf`.
 - Install using Flatpak.
-- Copy a directory contents or a file to the specified destination (can set ACLs according to acls.txt).
+- Copy a directory contents or a file to the specified destination (can set ACLs according to acls.txt, generate using `getfacl`).
 - Enable systemd units (system and per user).
 - Can run scripts before the setup, after installing packages and after setup.
 
@@ -45,6 +45,6 @@ cd auto-setup
 chmod +x *.sh
 ```
 
-After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup`.
+After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup.sh`.
 
 It expects root permissions so you should store it and associated scripts safely.
