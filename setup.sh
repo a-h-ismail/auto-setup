@@ -25,15 +25,18 @@ pre_script=$(get_section Pre)
 post_script=$(get_section Post)
 post_package_install=$(get_section 'Post Packages')
 
-ping -c 4 8.8.8.8 &> /dev/null
-if [ $? -ne 0 ]; then
-    echo "Connect to the internet and try again."
-    exit 2
+if [ -n "$add_packages" ] && [ -n "$req_flatpacks" ]; then
+    echo "Checking network connectivity..."
+    ping -c 4 8.8.8.8 &> /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Connect to the internet and try again."
+        exit 2
+    fi
 fi
 
 # Execute the pre-install script
 if [ -n "$pre_script" ]; then
-    $pre_script "$system_type"
+    ./"$pre_script" "$system_type"
 fi
 
 # Install/Remove packages depending on your system type
@@ -75,7 +78,7 @@ fi
 
 # Execute post package install script
 if [ -n "$post_package_install" ]; then
-    $post_package_install "$system_type"
+    ./"$post_package_install" "$system_type"
 fi
 
 # Copy the files to the given locations
@@ -86,19 +89,13 @@ if [ -n "$files_mapping" ]; then
         # May get confused if the filename has : in it, should mitigate that
         source=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$1 }")
         destination=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$2 }")
-
-        # Destination is expected to be a directory.
-        if [ -f "$destination" ]; then
-            destination=$(dirname "$destination")
-        fi
-        
         mkdir -p "$destination"
         # Case of source being a directory
         if [ -d "$source" ]; then
             cp -r "$source"/. "$destination"
             # If an ACL file exists, restore the ACLs to the destination and delete the file
             if [ -e "$source/acls.txt" ]; then
-                tmp=PWD
+                tmp="$PWD"
                 cd "$destination"
                 setfacl --restore=acls.txt
                 rm acls.txt
@@ -157,5 +154,5 @@ fi
 
 # Finally the post script
 if [ -n "$post_script" ]; then
-    $post_script "$system_type"
+    ./"$post_script" "$system_type"
 fi
