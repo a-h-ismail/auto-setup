@@ -31,7 +31,6 @@ The file contains sections describing your system configuration. The format is:
 ...
 ```
 
-- Be aware that sections are delimited by empty lines, so an empty line directly under the section will cause it to be skipped.
 - Available sections: System, Add Packages, Remove Packages, Flatpak, Files, System Units, User Units, Pre, Post Packages, Post
 - Documentation of each section is in the sample configuration file.
 
