@@ -10,12 +10,6 @@ function get_section {
     awk -v "section=[$1]" -f get_configuration.awk auto-setup.conf
 }
 
-function exit_on_fail {
-    if [ $1 -ne 0 ]; then
-        exit 1
-    fi
-}
-
 # cd to the base directory of the script
 cd "${0%/*}"
 
@@ -44,42 +38,38 @@ if [ -n "$pre_script" ]; then
     ./"$pre_script" "$system_type"
 fi
 
+# Exit on error
+set -e
 # Install/Remove packages depending on your system type
 if [ -n "$system_type" ]; then
     # Fedora and derivatives
     if [ "$system_type" == "rpm" ]; then
         dnf install $add_packages -y
-
-        if [ -n "$req_flatpacks" ]; then
-            dnf install flatpak
-        fi
-
         dnf remove $remove_packages -y &&\
         dnf upgrade -y
-        exit_on_fail $?
     fi
     # Debian/Ubuntu derivatives
     if [ "$system_type" == "deb" ]; then
-        apt-get update &&\
+        apt-get update
         apt-get install $add_packages -y
-        exit_on_fail $?
-
-        if [ -n "$req_flatpacks" ]; then
-            apt-get install flatpak -y
-        fi
-
         apt-get remove --purge $remove_packages -y &&\
         apt-get autoremove -y &&\
         apt-get upgrade -y
-        exit_on_fail $?
     fi
 fi
 
 # Install Flatpaks
 if [ -n "$req_flatpacks" ]; then
+    if [ "$system_type" == "rpm" ]; then
+        dnf install flatpak -y
+    elif [ "$system_type" == "deb" ]; then
+        apt-get update && apt-get install flatpak -y
+    fi
+
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     flatpak install $req_flatpacks -y
 fi
+set +e
 
 # Execute post package install script
 if [ -n "$post_package_install" ]; then
