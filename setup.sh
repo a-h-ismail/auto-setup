@@ -13,15 +13,15 @@ function get_section {
 # cd to the base directory of the script
 cd "${0%/*}"
 
-system_type=$(get_section System)
+system_type=$(get_section 'System')
 add_packages=$(get_section 'Add Packages')
 remove_packages=$(get_section 'Remove Packages')
-req_flatpacks=$(get_section Flatpak)
+req_flatpacks=$(get_section 'Flatpak')
 system_units=$(get_section 'System Units')
 all_users_units=$(get_section 'User Units')
-files_mapping=$(get_section Files)
-pre_script=$(get_section Pre)
-post_script=$(get_section Post)
+files_mapping=$(get_section 'Files')
+pre_script=$(get_section 'Pre')
+post_script=$(get_section 'Post')
 post_package_install=$(get_section 'Post Packages')
 
 if [ -n "$add_packages" ] || [ -n "$req_flatpacks" ]; then
