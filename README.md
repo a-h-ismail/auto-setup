@@ -31,8 +31,21 @@ The file contains sections describing your system configuration. The format is:
 ...
 ```
 
-- Available sections: System, Add Packages, Remove Packages, Flatpak, Files, System Units, User Units, Pre, Post Packages, Post
+- Available sections: System, Add Packages, Remove Packages, Flatpak, Groups, Users, Files, System Units, User Units, Pre, Post Packages, Post
 - Documentation of each section is in the sample configuration file.
+
+### Execution Order
+
+- Pre setup script.
+- Install packages using `apt` or `dnf`.
+- Remove packages.
+- Execute post package install script.
+- Add groups.
+- Add users.
+- Copy files and directories.
+- Enable systemd user units (services, timers...).
+- Enable systemd system units.
+- Execute post setup script.
 
 ## Installation
 
