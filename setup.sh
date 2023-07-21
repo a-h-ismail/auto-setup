@@ -17,6 +17,8 @@ system_type=$(get_section 'System')
 add_packages=$(get_section 'Add Packages')
 remove_packages=$(get_section 'Remove Packages')
 req_flatpacks=$(get_section 'Flatpak')
+users_config=$(get_section 'Users')
+groups_config=$(get_section 'Groups')
 system_units=$(get_section 'System Units')
 all_users_units=$(get_section 'User Units')
 files_mapping=$(get_section 'Files')
@@ -76,15 +78,59 @@ if [ -n "$post_package_install" ]; then
     ./"$post_package_install" "$system_type"
 fi
 
+
+if [ -n "$groups_config" ]; then
+    for i in seq 1 $(echo "$groups_config" | wc -l); do
+        group_entry=$(echo "$groups_config" | awk "NR == $i {print \$0}")
+
+        groupname=$(echo "$group_entry" | cut -f 1 -d :)
+        gid_or_mode=$(echo "$group_entry" | cut -f 2 -d :)
+        force=$(echo "$group_entry" | cut -f 3 -d :)
+        
+        if [ -z "$groupname" ]; then
+            echo "Missing group name field in $group_entry"
+            continue
+        else
+            parameters="$groupname"
+        fi
+        case "$gid_or_mode" in
+            "s" )
+                parameters="$parameters --system"
+                ;;
+            "u" )
+                true
+                ;;
+            # User gave a UID (TODO: check if it is a number)
+            * )
+                if [[ "$gid_or_mode" =~ ^[0-9]+$ ]]; then
+                    parameters="$parameters --gid $gid_or_mode"
+                else
+                    echo "Invalid argument or GID '$gid_or_mode'"
+                    continue
+                fi
+                ;;
+        esac
+
+        if [ "$force" = "f" ]; then
+            groupdel -f "$groupname"
+        fi
+
+        groupadd $parameters
+    done
+fi
+
 if [ -n "$users_config" ]; then
     # Format: username:uid_or_mode:hash:force?
-    IFS=$'\n'
-    for user_entry in $users_config; do
+    # Count the number of lines in the config to know the number of iterations
+    for i in seq 1 $(echo "$users_config" | wc -l); do
+        user_entry=$(echo "$users_config" | awk "NR == $i {print \$0}")
         username=$(echo "$user_entry" | cut -f 1 -d :)
         uid_or_mode=$(echo "$user_entry" | cut -f 2 -d :)
-        hash=$(echo "$user_entry" | cut -f 3 -d :)
-        force=$(echo "$user_entry" | cut -f 4 -d :)
-        if [ -n "$username" ]; then
+        append_groups=$(echo "$user_entry" | cut -f 3 -d :)
+        hash=$(echo "$user_entry" | cut -f 4 -d :)
+        force=$(echo "$user_entry" | cut -f 5 -d :)
+
+        if [ -z "$username" ]; then
             echo "Missing username field in $user_entry"
             continue
         else
@@ -96,7 +142,7 @@ if [ -n "$users_config" ]; then
                 parameters="$parameters --system"
                 ;;
             "u" )
-                parameters="$parameters --create_home"
+                parameters="$parameters --create-home"
                 ;;
             # User gave a UID (TODO: check if it is a number)
             * )
@@ -115,51 +161,17 @@ if [ -n "$users_config" ]; then
         fi
 
         # Check if force add was set
-        if [ "$force" == "f" ]; then
+        if [ "$force" = "f" ]; then
             userdel -f "$username"
         fi
+
         useradd $parameters
+        
+        if [ -n "$append_groups" ]; then
+            usermod -aG $append_groups "$username"
+        fi
     done
 fi
-
-if [ -n "$groups_config" ]; then
-    IFS=$'\n'
-    for group_entry in $groups_config; do
-        groupname=$(echo "$group_entry" | cut -f 1 -d :)
-        gid_or_mode=$(echo "$group_entry" | cut -f 2 -d :)
-        add_users_to_group=$(echo "$group_entry" | cut -f 3 -d :)
-        force=$(echo "$user_entry" | cut -f 4 -d :)
-        if [ -n "$groupname" ]; then
-            echo "Missing group name field in $group_entry"
-            continue
-        else
-            parameters="$groupname"
-        fi
-        case "$gid_or_mode" in
-            "s" )
-                parameters="$parameters --system"
-                ;;
-            "u" )
-                parameters="$parameters --create_home"
-                ;;
-            # User gave a UID (TODO: check if it is a number)
-            * )
-                if [[ "$uid_or_mode" =~ ^[0-9]+$ ]]; then
-                    parameters="$parameters --gid $gid_or_mode"
-                else
-                    echo "Invalid argument or GID '$gid_or_mode'"
-                    continue
-                fi
-                ;;
-        esac
-        if [ -n "$add_users_to_group" ]; then
-            parameters="$parameters $add_users_to_group"
-        fi
-
-        groupadd $parameters
-    done
-fi
-
 
 # Copy the files to the given locations
 if [ -n "$files_mapping" ]; then
