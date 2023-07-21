@@ -39,6 +39,7 @@ The file contains sections describing your system configuration. The format is:
 - Pre setup script.
 - Install packages using `apt` or `dnf`.
 - Remove packages.
+- Install Flatpaks
 - Execute post package install script.
 - Add groups.
 - Add users.
@@ -46,6 +47,8 @@ The file contains sections describing your system configuration. The format is:
 - Enable systemd user units (services, timers...).
 - Enable systemd system units.
 - Execute post setup script.
+
+Note: A step is skipped if the relevant configuration section is empty.
 
 ## Installation
 
@@ -59,4 +62,4 @@ chmod +x *.sh
 
 After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup.sh`.
 
-It expects root permissions so you should store it and associated scripts safely.
+It expects root permissions so you should store it and the associated scripts safely.
