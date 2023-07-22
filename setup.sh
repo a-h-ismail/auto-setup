@@ -100,7 +100,6 @@ if [ -n "$groups_config" ]; then
             "u" )
                 true
                 ;;
-            # User gave a UID (TODO: check if it is a number)
             * )
                 if [[ "$gid_or_mode" =~ ^[0-9]+$ ]]; then
                     parameters="$parameters --gid $gid_or_mode"
@@ -144,7 +143,6 @@ if [ -n "$users_config" ]; then
             "u" )
                 parameters="$parameters --create-home"
                 ;;
-            # User gave a UID (TODO: check if it is a number)
             * )
                 if [[ "$uid_or_mode" =~ ^[0-9]+$ ]]; then
                     parameters="$parameters --uid $uid_or_mode"
@@ -180,11 +178,16 @@ if [ -n "$files_mapping" ]; then
     for i in $(seq 1 $(echo "$files_mapping" | wc -l)); do
         # Get source and destination paths by splitting each line at the ':' delimiter
         # May get confused if the filename has : in it, should mitigate that
-        source=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$1; exit }")
-        destination=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$2; exit }")
-        # Clear it up from the previous iteration
+        # Isolate line number $i
+        map_entry=$(echo "$files_mapping" | awk "NR == $i { print \$0 }")
+
+        source=$(echo "$map_entry" | cut -f 1 -d :)
+        destination=$(echo "$map_entry" | cut -f 2 -d :)
+
+        # Clear value from the previous iteration
         unset new_name
         mkdir -p "$destination"
+
         # Case of source being a directory
         if [ -d "$source" ]; then
             cp -rf "$source"/. "$destination"
@@ -196,12 +199,13 @@ if [ -n "$files_mapping" ]; then
                 rm acls.txt
                 cd "$tmp"
             fi
+
         # Case of a file as source, the desired ACLs should be in the same directory as the file
         elif [ -f "$source" ]; then
             source_dir=$(dirname "$source")
 
             # Get the new name as indicated in the config
-            new_name=$(echo "$files_mapping" | awk -F ':' "NR == $i { printf \"%s\", \$3; exit }")
+            new_name=$(echo "$map_entry" | cut -f 3 -d :)
             if [ -n "$new_name" ] && [ -d "$destination/$new_name" ]; then
                 echo "Error, the requested filename is already taken by a directory: $destination/$new_name"
                 continue
@@ -209,10 +213,11 @@ if [ -n "$files_mapping" ]; then
 
             if [ -e "$source_dir/acls.txt" ]; then
                 original_acl=$(getfacl "$source")
-                # Get the desired ACL and set it, then copy while preserving attributes.
+                # Get the desired ACL and set it at the source, then copy while preserving attributes.
                 awk -v "file=$source" -f isolate_acl.awk "$source_dir/acls.txt" | setfacl --set-file=- "$source"
                 cp -af "$source" "$destination/$new_name"
-                # Restore the original ACL of the file
+
+                # Restore original ACL of the source file
                 echo "$original_acl" | setfacl --set-file=- "$source"
             else
                 cp -f "$source" "$destination/$new_name"
