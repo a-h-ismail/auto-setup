@@ -36,8 +36,9 @@ The file contains sections describing your system configuration. The format is:
 
 ### Execution Order
 
+- Read configuration file.
 - Pre setup script.
-- Install packages using `apt` or `dnf`.
+- Install packages using `apt` or `dnf`, then upgrade all packages.
 - Remove packages.
 - Install Flatpaks
 - Execute post package install script.
@@ -62,4 +63,4 @@ chmod +x *.sh
 
 After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup.sh`.
 
-It expects root permissions so you should store it and the associated scripts safely.
+Since these scripts will be run with root privileges, you should store them safely to avoid malicious code execution as root.
