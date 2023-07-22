@@ -26,32 +26,32 @@ pre_script=$(get_section 'Pre')
 post_script=$(get_section 'Post')
 post_package_install=$(get_section 'Post Packages')
 
-if [ -n "$add_packages" ] || [ -n "$req_flatpacks" ]; then
+if [[ -n $add_packages || -n $req_flatpacks ]]; then
     echo "Checking network connectivity..."
     ping -c 4 8.8.8.8 &> /dev/null
-    if [ $? -ne 0 ]; then
+    if [[ $? -ne 0 ]]; then
         echo "Connect to the internet and try again."
         exit 2
     fi
 fi
 
 # Execute the pre-install script
-if [ -n "$pre_script" ]; then
+if [[ -n $pre_script ]]; then
     ./"$pre_script" "$system_type"
 fi
 
 # Exit on error
 set -e
 # Install/Remove packages depending on your system type
-if [ -n "$system_type" ]; then
+if [[ -n $system_type ]]; then
     # Fedora and derivatives
-    if [ "$system_type" == "rpm" ]; then
+    if [[ $system_type == "rpm" ]]; then
         dnf install $add_packages -y
         dnf remove $remove_packages -y
         dnf upgrade -y
     fi
     # Debian/Ubuntu derivatives
-    if [ "$system_type" == "deb" ]; then
+    if [[ $system_type == "deb" ]]; then
         apt-get update
         apt-get install $add_packages -y
         apt-get remove --purge $remove_packages -y
@@ -61,10 +61,10 @@ if [ -n "$system_type" ]; then
 fi
 
 # Install Flatpaks
-if [ -n "$req_flatpacks" ]; then
-    if [ "$system_type" == "rpm" ]; then
+if [[ -n $req_flatpacks ]]; then
+    if [[ $system_type == "rpm" ]]; then
         dnf install flatpak -y
-    elif [ "$system_type" == "deb" ]; then
+    elif [[ $system_type == "deb" ]]; then
         apt-get update && apt-get install flatpak -y
     fi
 
@@ -74,12 +74,12 @@ fi
 set +e
 
 # Execute post package install script
-if [ -n "$post_package_install" ]; then
+if [[ -n $post_package_install ]]; then
     ./"$post_package_install" "$system_type"
 fi
 
 
-if [ -n "$groups_config" ]; then
+if [[ -n $groups_config ]]; then
     for i in seq 1 $(echo "$groups_config" | wc -l); do
         group_entry=$(echo "$groups_config" | awk "NR == $i {print \$0}")
 
@@ -87,7 +87,7 @@ if [ -n "$groups_config" ]; then
         gid_or_mode=$(echo "$group_entry" | cut -f 2 -d :)
         force=$(echo "$group_entry" | cut -f 3 -d :)
         
-        if [ -z "$groupname" ]; then
+        if [[ -z $groupname ]]; then
             echo "Missing group name field in $group_entry"
             continue
         else
@@ -101,7 +101,7 @@ if [ -n "$groups_config" ]; then
                 true
                 ;;
             * )
-                if [[ "$gid_or_mode" =~ ^[0-9]+$ ]]; then
+                if [[ $gid_or_mode =~ ^[[0-9]]+$ ]]; then
                     parameters="$parameters --gid $gid_or_mode"
                 else
                     echo "Invalid argument or GID '$gid_or_mode'"
@@ -110,7 +110,7 @@ if [ -n "$groups_config" ]; then
                 ;;
         esac
 
-        if [ "$force" = "f" ]; then
+        if [[ $force = "f" ]]; then
             groupdel -f "$groupname"
         fi
 
@@ -118,7 +118,7 @@ if [ -n "$groups_config" ]; then
     done
 fi
 
-if [ -n "$users_config" ]; then
+if [[ -n $users_config ]]; then
     # Format: username:uid_or_mode:hash:force?
     # Count the number of lines in the config to know the number of iterations
     for i in seq 1 $(echo "$users_config" | wc -l); do
@@ -129,7 +129,7 @@ if [ -n "$users_config" ]; then
         hash=$(echo "$user_entry" | cut -f 4 -d :)
         force=$(echo "$user_entry" | cut -f 5 -d :)
 
-        if [ -z "$username" ]; then
+        if [[ -z "$username" ]]; then
             echo "Missing username field in $user_entry"
             continue
         else
@@ -144,7 +144,7 @@ if [ -n "$users_config" ]; then
                 parameters="$parameters --create-home"
                 ;;
             * )
-                if [[ "$uid_or_mode" =~ ^[0-9]+$ ]]; then
+                if [[ "$uid_or_mode" =~ ^[[0-9]]+$ ]]; then
                     parameters="$parameters --uid $uid_or_mode"
                 else
                     echo "Invalid argument or UID '$uid_or_mode'"
@@ -154,25 +154,25 @@ if [ -n "$users_config" ]; then
         esac
 
         # Add the password hash
-        if [ -n "$hash" ]; then
+        if [[ -n $hash ]]; then
             parameters="$parameters --password '$hash'"
         fi
 
         # Check if force add was set
-        if [ "$force" = "f" ]; then
+        if [[ $force = "f" ]]; then
             userdel -f "$username"
         fi
 
         useradd $parameters
         
-        if [ -n "$append_groups" ]; then
+        if [[ -n $append_groups ]]; then
             usermod -aG $append_groups "$username"
         fi
     done
 fi
 
 # Copy the files to the given locations
-if [ -n "$files_mapping" ]; then
+if [[ -n $files_mapping ]]; then
     echo -e "\nCopying files..."
     # Extract the source/destination pairs
     for i in $(seq 1 $(echo "$files_mapping" | wc -l)); do
@@ -189,10 +189,10 @@ if [ -n "$files_mapping" ]; then
         mkdir -p "$destination"
 
         # Case of source being a directory
-        if [ -d "$source" ]; then
+        if [[ -d $source ]]; then
             cp -rf "$source"/. "$destination"
             # If an ACL file exists, restore the ACLs to the destination and delete the file
-            if [ -e "$source/acls.txt" ]; then
+            if [[ -e "$source/acls.txt" ]]; then
                 tmp="$PWD"
                 cd "$destination"
                 setfacl --restore=acls.txt
@@ -201,17 +201,17 @@ if [ -n "$files_mapping" ]; then
             fi
 
         # Case of a file as source, the desired ACLs should be in the same directory as the file
-        elif [ -f "$source" ]; then
+        elif [[ -f $source ]]; then
             source_dir=$(dirname "$source")
 
             # Get the new name as indicated in the config
             new_name=$(echo "$map_entry" | cut -f 3 -d :)
-            if [ -n "$new_name" ] && [ -d "$destination/$new_name" ]; then
+            if [[ -n $new_name && -d "$destination/$new_name" ]]; then
                 echo "Error, the requested filename is already taken by a directory: $destination/$new_name"
                 continue
             fi
 
-            if [ -e "$source_dir/acls.txt" ]; then
+            if [[ -e "$source_dir/acls.txt" ]]; then
                 original_acl=$(getfacl "$source")
                 # Get the desired ACL and set it at the source, then copy while preserving attributes.
                 awk -v "file=$source" -f isolate_acl.awk "$source_dir/acls.txt" | setfacl --set-file=- "$source"
@@ -231,7 +231,7 @@ if [ -n "$files_mapping" ]; then
 fi
 
 # Enable user units
-if [ -n "$all_users_units" ]; then
+if [[ -n $all_users_units ]]; then
     echo -e "\nEnabling systemd user units..."
     # Split username and units using awk
     for i in $(seq $(echo "$all_users_units" | wc -l)); do
@@ -242,7 +242,7 @@ if [ -n "$all_users_units" ]; then
             unit_target=$(grep 'WantedBy=' "$user_home/.config/systemd/user/$user_unit" | cut -f 2 -d =)
 
             # Default case
-            if [ -z "$unit_target" ]; then
+            if [[ -z $unit_target ]]; then
                 unit_target='default.target'
             fi
 
@@ -258,13 +258,13 @@ fi
 # Enable system units as requested
 # Reload the service manager since units could be newly installed by the package manager
 # Far easier than the users one
-if [ -n "$system_units" ]; then
+if [[ -n $system_units ]]; then
     echo -e "\nEnabling systemd system units..."
     systemctl daemon-reload
     systemctl enable --now $system_units
 fi
 
 # Finally the post script
-if [ -n "$post_script" ]; then
+if [[ -n $post_script ]]; then
     ./"$post_script" "$system_type"
 fi
