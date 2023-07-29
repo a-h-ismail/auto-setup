@@ -31,7 +31,7 @@ The file contains sections describing your system configuration. The format is:
 ...
 ```
 
-- Available sections: System, Add Packages, Remove Packages, Flatpak, Groups, Users, Files, System Units, User Units, Pre, Post Packages, Post
+- Available sections: System, Add Packages, Remove Packages, Flatpak, Groups, Users, Files, System Units, User Units, Pre, Post Packages, Post, Self Delete
 - Documentation of each section is in the sample configuration file.
 
 ### Execution Order
@@ -48,8 +48,13 @@ The file contains sections describing your system configuration. The format is:
 - Enable systemd user units (services, timers...).
 - Enable systemd system units.
 - Execute post setup script.
+- Execute self delete script and remove installer directory if requested.
 
 Note: A step is skipped if the relevant configuration section is empty.
+
+### Command Line Arguments
+
+`--self-delete`: Executes self deletion script and removes the installer directory on installation completion.
 
 ## Installation
 
