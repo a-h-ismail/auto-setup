@@ -25,6 +25,7 @@ files_mapping=$(get_section 'Files')
 pre_script=$(get_section 'Pre')
 post_script=$(get_section 'Post')
 post_package_install=$(get_section 'Post Packages')
+self_delete=$(get_section 'Self Delete')
 
 if [[ -n $add_packages || -n $req_flatpacks ]]; then
     echo "Checking network connectivity..."
@@ -267,4 +268,12 @@ fi
 # Finally the post script
 if [[ -n $post_script ]]; then
     ./"$post_script" "$system_type"
+fi
+
+# Option to self delete on completion
+if [[ $1 == "--self-delete" ]]; then
+    echo 'Self delete in progress.'
+    cd "${0%/*}"
+    ./"$self_delete"
+    rm -rf "$(pwd)"
 fi
