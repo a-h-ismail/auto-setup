@@ -142,11 +142,15 @@ if [[ -n $users_config ]]; then
                 parameters="$parameters --system"
                 ;;
             "u" )
-                parameters="$parameters --create-home"
+                parameters="$parameters --create-home -s /bin/bash"
                 ;;
             * )
-                if [[ "$uid_or_mode" =~ ^[[0-9]]+$ ]]; then
+                if [[ $uid_or_mode =~ ^[[0-9]]+$ ]]; then
                     parameters="$parameters --uid $uid_or_mode"
+                    # If the UID is within normal users range, add --create-home and set shell to bash
+                    if [[ $uid_or_mode -ge 1000 ]]; then
+                        parameters="$parameters --create-home -s /bin/bash"
+                    fi
                 else
                     echo "Invalid argument or UID '$uid_or_mode'"
                     continue
@@ -277,3 +281,5 @@ if [[ $1 == "--self-delete" ]]; then
     ./"$self_delete"
     rm -rf "$(pwd)"
 fi
+
+echo "Setup done!"
