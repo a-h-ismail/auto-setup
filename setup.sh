@@ -81,7 +81,7 @@ fi
 
 
 if [[ -n $groups_config ]]; then
-    for i in $(seq 1 $(echo "$groups_config" | wc -l)); do
+    for i in $(seq 1 "$(echo "$groups_config" | wc -l)"); do
         group_entry=$(echo "$groups_config" | awk "NR == $i {print \$0}")
 
         groupname=$(echo "$group_entry" | cut -f 1 -d :)
@@ -92,18 +92,18 @@ if [[ -n $groups_config ]]; then
             echo "Missing group name field in $group_entry"
             continue
         else
-            parameters="$groupname"
+            parameters=("$groupname")
         fi
         case "$gid_or_mode" in
             "s" )
-                parameters="$parameters --system"
+                parameters+=(--system)
                 ;;
             "u" )
                 true
                 ;;
             * )
                 if [[ $gid_or_mode =~ ^[[0-9]]+$ ]]; then
-                    parameters="$parameters --gid $gid_or_mode"
+                    parameters+=(--gid "$gid_or_mode")
                 else
                     echo "Invalid argument or GID '$gid_or_mode'"
                     continue
@@ -115,14 +115,14 @@ if [[ -n $groups_config ]]; then
             groupdel -f "$groupname"
         fi
 
-        groupadd $parameters
+        groupadd "${parameters[@]}"
     done
 fi
 
 if [[ -n $users_config ]]; then
     # Format: username:uid_or_mode:group1,group2...:hash:force?
     # Count the number of lines in the config to know the number of iterations
-    for i in $(seq 1 $(echo "$users_config" | wc -l)); do
+    for i in $(seq 1 "$(echo "$users_config" | wc -l)"); do
         user_entry=$(echo "$users_config" | awk "NR == $i {print \$0}")
         username=$(echo "$user_entry" | cut -f 1 -d :)
         uid_or_mode=$(echo "$user_entry" | cut -f 2 -d :)
@@ -134,22 +134,22 @@ if [[ -n $users_config ]]; then
             echo "Missing username field in $user_entry"
             continue
         else
-            parameters="$username"
+            parameters=("$username")
         fi
 
         case "$uid_or_mode" in
             "s" )
-                parameters="$parameters --system"
+                parameters+=(--system)
                 ;;
             "u" )
-                parameters="$parameters --create-home -s /bin/bash"
+                parameters+=(--create-home -s /bin/bash)
                 ;;
             * )
                 if [[ $uid_or_mode =~ ^[[0-9]]+$ ]]; then
-                    parameters="$parameters --uid $uid_or_mode"
+                    parameters+=(--uid "$uid_or_mode")
                     # If the UID is within normal users range, add --create-home and set shell to bash
                     if [[ $uid_or_mode -ge 1000 ]]; then
-                        parameters="$parameters --create-home -s /bin/bash"
+                        parameters+=(--create-home -s /bin/bash)
                     fi
                 else
                     echo "Invalid argument or UID '$uid_or_mode'"
@@ -160,7 +160,7 @@ if [[ -n $users_config ]]; then
 
         # Add the password hash
         if [[ -n $hash ]]; then
-            parameters="$parameters --password $hash"
+            parameters+=(--password "$hash")
         fi
 
         # Check if force add was set
@@ -168,10 +168,10 @@ if [[ -n $users_config ]]; then
             userdel -f "$username"
         fi
 
-        useradd $parameters
+        useradd "${parameters[@]}"
         
         if [[ -n $append_groups ]]; then
-            usermod -aG $append_groups "$username"
+            usermod -aG "$append_groups" "$username"
         fi
     done
 fi
@@ -180,7 +180,7 @@ fi
 if [[ -n $files_mapping ]]; then
     echo -e "\nCopying files..."
     # Extract the source/destination pairs
-    for i in $(seq 1 $(echo "$files_mapping" | wc -l)); do
+    for i in $(seq 1 "$(echo "$files_mapping" | wc -l)"); do
         # Get source and destination paths by splitting each line at the ':' delimiter
         # May get confused if the filename has : in it, should mitigate that
         # Isolate line number $i
@@ -245,7 +245,7 @@ fi
 if [[ -n $all_users_units ]]; then
     echo -e "\nEnabling systemd user units..."
     # Split username and units using awk
-    for i in $(seq $(echo "$all_users_units" | wc -l)); do
+    for i in $(seq "$(echo "$all_users_units" | wc -l)"); do
         username=$(echo "$all_users_units" | awk -F ':' "NR == $i {print \$1}")
         user_units=$(echo "$all_users_units" | awk -F ':' "NR == $i {print \$2}")
         user_home=$(grep "$username" -w /etc/passwd | cut -f 6 -d :)
