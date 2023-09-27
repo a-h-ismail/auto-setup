@@ -1,10 +1,6 @@
 #!/bin/bash
 # Copyright (C) 2023 Ahmad Ismail
 # SPDX-License-Identifier: MPL-2.0
-if [ $EUID -ne 0 ]; then
-    echo "You must run this as root, try with sudo."
-    exit 1
-fi
 
 function get_section {
     awk -v "section=[$1]" -f get_configuration.awk auto-setup.conf
@@ -40,8 +36,13 @@ if arg_exists "--help"; then
     Other options:
 
     --self-delete            Remove the setup directory after executing the self delete script
-    --help                   Print this help prompt
-    '
+    --help                   Print this help prompt'
+    exit
+fi
+
+if [ $EUID -ne 0 ]; then
+    echo "You must run this as root, try with sudo."
+    exit 1
 fi
 
 # cd to the base directory of the script
