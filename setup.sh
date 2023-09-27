@@ -10,22 +10,55 @@ function get_section {
     awk -v "section=[$1]" -f get_configuration.awk auto-setup.conf
 }
 
+# Copy command line arguments to a variable (so that the function below can access them)
+args=("$@")
+
+function arg_exists {
+    for i in "${args[@]}"; do
+        if [[ $1 == "$i" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+if arg_exists "--help"; then
+    echo 'Usage: ./setup.sh [OPTIONS]
+    
+    --no-package-install     Skip package installation and upgrade step
+    --no-package-remove      Skip package removal
+    --no-flatpak             Skip Flatpak installation
+    --no-useradd             Skip user add/modify
+    --no-groupadd            Skip group add/modify
+    --no-user-units          Skip systemd user(s) units installation
+    --no-system-units        Skip systemd system units installation
+    --no-file-copy           Skip file and directory copy step
+    --no-preinst             Skip preinstall script
+    --no-postinst            Skip postinstall script
+    --no-post-package        Skip post package install script
+
+    Other options:
+
+    --self-delete            Remove the setup directory after executing the self delete script
+    --help                   Print this help prompt
+    '
+fi
+
 # cd to the base directory of the script
 cd "${0%/*}"
-
 system_type=$(get_section 'System')
-add_packages=$(get_section 'Add Packages')
+add_packages=$(! arg_exists "--no-package-install" && get_section 'Add Packages')
 remove_packages=$(get_section 'Remove Packages')
-req_flatpacks=$(get_section 'Flatpak')
-users_config=$(get_section 'Users')
-groups_config=$(get_section 'Groups')
-system_units=$(get_section 'System Units')
-all_users_units=$(get_section 'User Units')
-files_mapping=$(get_section 'Files')
-pre_script=$(get_section 'Pre')
-post_script=$(get_section 'Post')
-post_package_install=$(get_section 'Post Packages')
-self_delete=$(get_section 'Self Delete')
+req_flatpacks=$(! arg_exists "--no-flatpak" && get_section 'Flatpak')
+users_config=$(! arg_exists "--no-useradd" && get_section 'Users')
+groups_config=$(! arg_exists "--no-groupadd" && get_section 'Groups')
+system_units=$(! arg_exists "--no-system-units" && get_section 'System Units')
+all_users_units=$(! arg_exists "--no-user-units" && get_section 'User Units')
+files_mapping=$(! arg_exists "--no-file-copy" && get_section 'Files')
+pre_script=$(! arg_exists "--no-preinst" && get_section 'Pre')
+post_script=$(! arg_exists "" && get_section 'Post')
+post_package_install=$(! arg_exists "" && get_section 'Post Packages')
+self_delete=$(! arg_exists "--no-self-delete" && get_section 'Self Delete')
 
 if [[ -n $add_packages || -n $req_flatpacks ]]; then
     echo "Checking network connectivity..."
@@ -281,7 +314,7 @@ if [[ -n $post_script ]]; then
 fi
 
 # Option to self delete on completion
-if [[ $1 == "--self-delete" ]]; then
+if arg_exists "--self-delete"; then
     echo 'Self delete in progress.'
     cd "${0%/*}"
     ./"$self_delete"
