@@ -50,11 +50,30 @@ The file contains sections describing your system configuration. The format is:
 - Execute post setup script.
 - Execute self delete script and remove installer directory if requested.
 
-Note: A step is skipped if the relevant configuration section is empty.
+Note: A step is skipped if the relevant configuration section is empty, or if a specific commandline option is provided.
 
 ### Command Line Arguments
 
-`--self-delete`: Executes self deletion script and removes the installer directory on installation completion.
+```
+Usage: ./setup.sh [OPTIONS]
+    
+    --no-package-install     Skip package installation and upgrade step
+    --no-package-remove      Skip package removal
+    --no-flatpak             Skip Flatpak installation
+    --no-useradd             Skip user add/modify
+    --no-groupadd            Skip group add/modify
+    --no-user-units          Skip systemd user(s) units installation
+    --no-system-units        Skip systemd system units installation
+    --no-file-copy           Skip file and directory copy step
+    --no-preinst             Skip preinstall script
+    --no-postinst            Skip postinstall script
+    --no-post-package        Skip post package install script
+
+    Other options:
+
+    --self-delete            Remove the setup directory after executing the self delete script
+    --help                   Print this help prompt
+```
 
 ## Installation
 
