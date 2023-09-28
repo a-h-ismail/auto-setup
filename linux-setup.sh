@@ -19,7 +19,7 @@ function arg_exists {
 }
 
 if arg_exists "--help"; then
-    echo 'Usage: ./setup.sh [OPTIONS]
+    echo 'Usage: ./linux-setup.sh [OPTIONS]
     
     --no-package-install     Skip package installation and upgrade step
     --no-package-remove      Skip package removal
