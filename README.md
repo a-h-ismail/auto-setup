@@ -2,7 +2,7 @@
 
 ## Introduction
 
-`linux-setup` is a set of scripts and a configuration file that helps you setup your Linux system. Requires coreutils, a package manager and `acl` tools only.
+`linux-setup` is a set of scripts and a configuration file that helps you setup your Linux system. Requires coreutils, a package manager, `acl` tools and the `ping` command.
 
 ## Features
 
@@ -55,7 +55,7 @@ Note: A step is skipped if the relevant configuration section is empty, or if a 
 ### Command Line Arguments
 
 ```
-Usage: ./setup.sh [OPTIONS]
+Usage: ./linux-setup.sh [OPTIONS]
     
     --no-package-install     Skip package installation and upgrade step
     --no-package-remove      Skip package removal
@@ -85,6 +85,6 @@ cd linux-setup
 chmod +x *.sh
 ```
 
-After writing your configuration and extra scripts/files, run the setup script: `sudo ./setup.sh`.
+After writing your configuration and extra scripts/files, run the setup script: `sudo ./linux-setup.sh`.
 
 Since these scripts will be run with root privileges, you should store them safely to avoid malicious code execution as root.
