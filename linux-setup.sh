@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 function get_section {
-    awk -v "section=[$1]" -f get_configuration.awk auto-setup.conf
+    awk -v "section=[$1]" -f get_configuration.awk linux-setup.conf
 }
 
 # Copy command line arguments to a variable (so that the function below can access them)
